@@ -4,24 +4,26 @@ import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { PaymentsModule } from './payments/payments.module';
+import { config } from 'dotenv';
+
+// Load Environment Variables
+config({
+  path: ['.env', '.env.production', '.env.local'],
+});
 
 @Module({
   imports: [
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: process.env.DB_HOST || '62.118.109.7',
-      port: parseInt(process.env.DB_PORT) || 5432,
-      username: process.env.DB_USERNAME || 'car',
-      password: process.env.DB_PASSWORD || 'Smr63163',
-      database: process.env.DB_DATABASE || 'cardb',
+      url: process.env.DATABASE_URL,
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: true, // В продакшене должно быть false
-      ssl: {
-        rejectUnauthorized: false, // Только для разработки
-      },
+      ssl: true,
     }),
     UsersModule,
     AuthModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
