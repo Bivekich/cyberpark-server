@@ -18,6 +18,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user) {
       throw new UnauthorizedException();
     }
-    return { id: user.id, email: user.email, fullName: user.fullName };
+    
+    const userResponse = { 
+      id: user.id, 
+      email: user.email, 
+      fullName: user.fullName,
+      profileImage: user.profileImage 
+    };
+    // console.log(`JWT strategy returning user data:`, userResponse);
+    
+    return userResponse;
   }
 }

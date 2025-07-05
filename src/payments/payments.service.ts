@@ -2,7 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { YooCheckout, ICreatePayment, ICreateRefund } from '@a2seven/yoo-checkout';
-import { User } from '../users/entities/user.entity';
+import { User } from '../users/user.entity';
 import { Transaction, TransactionType, TransactionStatus } from '../users/entities/transaction.entity';
 
 export interface CreatePaymentDto {
@@ -222,16 +222,31 @@ export class PaymentsService {
    */
   async getPaymentHistory(userId: string, filter?: any) {
     try {
-      // В реальном приложении здесь будет запрос к базе данных
-      // const payments = await this.paymentRepository.find({
-      //   where: { userId },
-      //   ...filter
-      // });
+      const take = filter?.limit ? parseInt(filter.limit, 10) : 100;
+      const skip = filter?.offset ? parseInt(filter.offset, 10) : 0;
 
-      // Пока возвращаем пустой массив как заглушку
+      // Фильтруем только платежи (type = deposit или withdrawal?)
+      const query = this.transactionRepository.createQueryBuilder('t')
+        .where('t.user_id = :userId', { userId })
+        .andWhere('t.type = :type', { type: 'deposit' })
+        .orderBy('t.created_at', 'DESC')
+        .take(take)
+        .skip(skip);
+
+      const [items, total] = await query.getManyAndCount();
+
+      // Преобразуем в формат PaymentResponse (упрощенный)
+      const mapped = items.map(trx => ({
+        id: trx.paymentId || trx.id,
+        status: trx.status === 'completed' ? 'succeeded' : trx.status,
+        amount: { value: parseFloat(trx.amount.toString()).toFixed(2), currency: 'RUB' },
+        description: trx.description,
+        created_at: trx.createdAt.toISOString(),
+      }));
+
       return {
-        items: [],
-        has_next: false,
+        items: mapped,
+        has_next: skip + take < total,
         next_cursor: null,
       };
     } catch (error) {
@@ -502,8 +517,12 @@ export class PaymentsService {
    */
   async getUserBalance(userId: string): Promise<number> {
     try {
+      console.log(`Getting balance for user: ${userId}`);
       const user = await this.userRepository.findOne({ where: { id: userId } });
-      return user ? parseFloat(user.balance.toString()) : 0;
+      console.log(`User found:`, user ? { id: user.id, email: user.email, balance: user.balance } : 'null');
+      const balance = user ? parseFloat(user.balance.toString()) : 0;
+      console.log(`Returning balance: ${balance}`);
+      return balance;
     } catch (error) {
       console.error('Error fetching user balance:', error);
       return 0;

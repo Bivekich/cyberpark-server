@@ -1,7 +1,8 @@
-import { Entity, Column, PrimaryGeneratedColumn, BeforeInsert } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, BeforeInsert, OneToMany } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { Transaction } from './entities/transaction.entity';
 
-@Entity()
+@Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -12,20 +13,29 @@ export class User {
   @Column()
   password: string;
 
-  @Column()
+  @Column({ name: 'full_name' })
   fullName: string;
 
-  @Column({ default: false })
+  @Column({ name: 'is_active', default: false })
   isActive: boolean;
 
-  @Column({ nullable: true })
+  @Column({ name: 'refresh_token', nullable: true })
   refreshToken: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'telegram_id', nullable: true })
   telegramId: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'apple_id', nullable: true })
   appleId: string;
+
+  @Column({ name: 'balance', type: 'decimal', precision: 10, scale: 2, default: 0 })
+  balance: number;
+
+  @Column({ name: 'profile_image', nullable: true })
+  profileImage: string;
+
+  @OneToMany(() => Transaction, transaction => transaction.user)
+  transactions: Transaction[];
 
   @BeforeInsert()
   async hashPassword() {

@@ -24,7 +24,9 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard)
   async getUserBalance(@Request() req) {
     const userId = req.user.id; // Get user ID from JWT token
+    console.log(`Balance endpoint called for user: ${userId}`);
     const balance = await this.paymentsService.getUserBalance(userId);
+    console.log(`Returning balance response: ${JSON.stringify({ balance })}`);
     return { balance };
   }
 
@@ -45,7 +47,7 @@ export class PaymentsController {
   @Get('history')
   @UseGuards(JwtAuthGuard)
   async getPaymentHistory(@Request() req, @Query() filter: any) {
-    const userId = req.user.userId;
+    const userId = req.user.id;
     return this.paymentsService.getPaymentHistory(userId, filter);
   }
 

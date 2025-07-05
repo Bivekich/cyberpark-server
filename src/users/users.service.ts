@@ -105,4 +105,22 @@ export class UsersService {
       refreshToken: refreshToken ? await bcrypt.hash(refreshToken, 10) : null,
     });
   }
+
+  /**
+   * Обновляем ссылку на аватар пользователя
+   */
+  async updateProfileImage(userId: string, avatarUrl: string): Promise<void> {
+    console.log(`Updating profile image for user ${userId} with URL: ${avatarUrl}`);
+    
+    // Проверяем, что пользователь существует
+    const user = await this.findOne(userId);
+    console.log(`User found: ${user.email}, current profileImage: ${user.profileImage}`);
+    
+    const result = await this.usersRepository.update(userId, { profileImage: avatarUrl });
+    console.log(`Update result:`, result);
+    
+    // Проверяем, что обновление прошло успешно
+    const updatedUser = await this.findOne(userId);
+    console.log(`After update, profileImage: ${updatedUser.profileImage}`);
+  }
 }
