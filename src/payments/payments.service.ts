@@ -107,15 +107,18 @@ export class PaymentsService {
           metadata: paymentData.metadata,
         };
         
-        // Создаем транзакцию в базе данных
-        await this.createTransactionRecord(
-          userId,
-          TransactionType.DEPOSIT,
-          parseFloat(createPaymentDto.amount.value),
-          createPaymentDto.description,
-          mockPayment.id,
-          TransactionStatus.PENDING
-        );
+        try {
+          await this.createTransactionRecord(
+            userId,
+            TransactionType.DEPOSIT,
+            parseFloat(createPaymentDto.amount.value),
+            createPaymentDto.description,
+            mockPayment.id,
+            TransactionStatus.PENDING
+          );
+        } catch (err) {
+          console.warn('Skipping DB transaction creation in mock mode:', err?.message);
+        }
         
         console.log('Mock payment created:', mockPayment);
         return mockPayment;
@@ -123,8 +126,19 @@ export class PaymentsService {
 
       const payment = await this.yooCheckout.createPayment(paymentData as ICreatePayment, this.generateIdempotenceKey());
       
-      // Здесь можно добавить сохранение платежа в базу данных
-      // await this.savePaymentToDatabase(payment, userId);
+      // Создаем транзакцию в базе данных, чтобы потом можно было обновить баланс
+      try {
+        await this.createTransactionRecord(
+          userId,
+          TransactionType.DEPOSIT,
+          parseFloat(createPaymentDto.amount.value),
+          createPaymentDto.description,
+          payment.id,
+          TransactionStatus.PENDING
+        );
+      } catch (err) {
+        console.error('Error saving transaction record for real payment:', err?.message);
+      }
 
       return payment;
     } catch (error) {
@@ -155,7 +169,27 @@ export class PaymentsService {
         return mockPayment;
       }
 
-      const payment = await this.yooCheckout.getPayment(paymentId);
+      let payment = await this.yooCheckout.getPayment(paymentId);
+
+      // Если требуется capture, делаем его автоматически
+      if (payment.status === 'waiting_for_capture') {
+        try {
+          await this.yooCheckout.capturePayment(paymentId, {
+            amount: payment.amount,
+          } as any);
+
+          // После захвата запрашиваем платеж еще раз, чтобы получить обновленный статус
+          payment = await this.yooCheckout.getPayment(paymentId);
+        } catch (captureErr) {
+          console.error('Error capturing payment:', captureErr?.message || captureErr);
+        }
+      }
+
+      // Если платеж успешно завершен, завершаем транзакцию и обновляем баланс
+      if (payment.status === 'succeeded') {
+        await this.completeTransaction(payment.id, TransactionStatus.COMPLETED);
+      }
+
       return payment;
     } catch (error) {
       console.error('Error fetching payment:', error);
@@ -324,8 +358,6 @@ export class PaymentsService {
     return true; // Упрощенная версия для демонстрации
   }
 
-
-
   /**
    * Создание записи транзакции в базе данных
    */
@@ -339,13 +371,23 @@ export class PaymentsService {
   ): Promise<Transaction> {
     try {
       // Получаем текущий баланс пользователя
-      const user = await this.userRepository.findOne({ where: { id: userId } });
-      const currentBalance = user ? parseFloat(user.balance.toString()) : 0;
-      
-      // Вычисляем новый баланс
-      const newBalance = type === TransactionType.DEPOSIT 
-        ? currentBalance + amount 
-        : currentBalance - amount;
+      let user = await this.userRepository.findOne({ where: { id: userId } });
+
+      // Если пользователя нет, создаем его по-быстрому (минимально для FK)
+      if (!user) {
+        user = this.userRepository.create({
+          id: userId,
+          email: `auto-${userId}@example.com`,
+          password: 'placeholder',
+          fullName: 'CyberPark User',
+          balance: 0,
+        });
+        await this.userRepository.save(user);
+      }
+
+      const currentBalance = parseFloat(user.balance.toString()) || 0;
+
+      // Не изменяем фактический баланс при создании транзакции
 
       const transaction = this.transactionRepository.create({
         userId,
@@ -353,7 +395,9 @@ export class PaymentsService {
         status,
         amount,
         balanceBefore: currentBalance,
-        balanceAfter: newBalance,
+        balanceAfter: type === TransactionType.DEPOSIT 
+          ? currentBalance + amount 
+          : currentBalance - amount,
         description,
         paymentId,
         metadata: { timestamp: new Date().toISOString() },
@@ -385,8 +429,9 @@ export class PaymentsService {
         user = await this.userRepository.save(user);
       }
 
-      const currentBalance = parseFloat(user.balance.toString());
-      const newBalance = currentBalance + amount;
+      const currentBalance = parseFloat(user.balance.toString()) || 0;
+      const numericAmount = parseFloat(amount.toString());
+      const newBalance = currentBalance + numericAmount;
       
       await this.userRepository.update(userId, { balance: newBalance });
       
@@ -401,20 +446,35 @@ export class PaymentsService {
    */
   private async completeTransaction(paymentId: string, status: TransactionStatus): Promise<void> {
     try {
+      console.log(`Completing transaction for payment ${paymentId} with status ${status}`);
+      
       const transaction = await this.transactionRepository.findOne({ 
         where: { paymentId } 
       });
 
       if (transaction) {
+        console.log(`Found transaction:`, {
+          id: transaction.id,
+          userId: transaction.userId,
+          amount: transaction.amount,
+          type: transaction.type,
+          currentStatus: transaction.status
+        });
+
         // Обновляем статус транзакции
         await this.transactionRepository.update(transaction.id, { status });
 
-        // Если транзакция успешна, обновляем баланс пользователя
-        if (status === TransactionStatus.COMPLETED && transaction.type === TransactionType.DEPOSIT) {
-          await this.updateUserBalance(transaction.userId, transaction.amount);
+        // Если транзакция успешна и еще не завершена, обновляем баланс пользователя
+        if (status === TransactionStatus.COMPLETED && 
+            transaction.type === TransactionType.DEPOSIT && 
+            transaction.status !== TransactionStatus.COMPLETED) {
+          console.log(`Updating user balance: userId=${transaction.userId}, amount=${transaction.amount}`);
+          await this.updateUserBalance(transaction.userId, parseFloat(transaction.amount.toString()));
         }
 
         console.log(`Transaction ${transaction.id} completed with status: ${status}`);
+      } else {
+        console.warn(`No transaction found for payment ${paymentId}`);
       }
     } catch (error) {
       console.error('Error completing transaction:', error);
