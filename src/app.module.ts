@@ -5,6 +5,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { PaymentsModule } from './payments/payments.module';
+import { ReservationsModule } from './reservations/reservations.module';
+import { CarsModule } from './cars/cars.module';
+import { CarUnitsModule } from './cars/car-units.module';
 import { config } from 'dotenv';
 
 // Load Environment Variables
@@ -24,6 +27,9 @@ config({
     UsersModule,
     AuthModule,
     PaymentsModule,
+    ReservationsModule,
+    CarsModule,
+    CarUnitsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

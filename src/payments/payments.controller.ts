@@ -36,9 +36,27 @@ export class PaymentsController {
   @Get('transactions')
   @UseGuards(JwtAuthGuard)
   async getUserTransactions(@Request() req, @Query('limit') limit?: string) {
-    const userId = req.user.id; // Get user ID from JWT token
-    const limitNum = limit ? parseInt(limit) : 50;
+    const userId = req.user.id;
+    const limitNum = limit ? parseInt(limit, 10) : 50;
     return this.paymentsService.getUserTransactions(userId, limitNum);
+  }
+
+  /**
+   * Списание средств за использование машины
+   */
+  @Post('deduct-for-ride')
+  @UseGuards(JwtAuthGuard)
+  async deductForRide(@Body() deductDto: { amount: number; carName: string; duration: number }, @Request() req) {
+    // Get authenticated user ID from JWT token
+    const userId = req.user.id;
+    console.log('Deducting balance for ride:', { userId, ...deductDto });
+    
+    return this.paymentsService.deductBalanceForCarUsage(
+      userId,
+      deductDto.amount,
+      deductDto.carName,
+      deductDto.duration
+    );
   }
 
   /**
@@ -84,16 +102,16 @@ export class PaymentsController {
   @Post('refund')
   @UseGuards(JwtAuthGuard)
   async createRefund(@Body() refundDto: RefundDto, @Request() req) {
-    const userId = req.user.userId;
+    const userId = req.user.id;
     return this.paymentsService.createRefund(refundDto, userId);
   }
 
   /**
-   * Webhook для получения уведомлений от YooKassa
+   * Webhook для обработки уведомлений от YooKassa
    */
   @Post('webhook')
-  @HttpCode(HttpStatus.OK)
   async handleWebhook(@Body() webhookData: any) {
+    console.log('Received webhook:', JSON.stringify(webhookData, null, 2));
     return this.paymentsService.handleWebhook(webhookData);
   }
 
@@ -117,7 +135,7 @@ export class PaymentsController {
   @Post('create-with-saved')
   @UseGuards(JwtAuthGuard)
   async createPaymentWithSavedMethod(@Body() createPaymentDto: CreatePaymentDto, @Request() req) {
-    const userId = req.user.userId;
+    const userId = req.user.id;
     return this.paymentsService.createPayment(createPaymentDto, userId);
   }
 

@@ -530,6 +530,55 @@ export class PaymentsService {
   }
 
   /**
+   * Списание средств за использование машины
+   */
+  async deductBalanceForCarUsage(userId: string, amount: number, carName: string, duration: number): Promise<{ success: boolean; newBalance: number; error?: string }> {
+    try {
+      console.log(`Deducting ${amount} coins from user ${userId} for car usage`);
+      
+      // Проверяем текущий баланс
+      const currentBalance = await this.getUserBalance(userId);
+      
+      if (currentBalance < amount) {
+        console.log(`Insufficient balance: ${currentBalance} < ${amount}`);
+        return {
+          success: false,
+          newBalance: currentBalance,
+          error: 'Недостаточно средств на балансе'
+        };
+      }
+
+      // Создаем транзакцию списания
+      await this.createTransactionRecord(
+        userId,
+        TransactionType.WITHDRAWAL,
+        amount,
+        `Поездка на ${carName} (${Math.ceil(duration / 60)} мин)`,
+        undefined,
+        TransactionStatus.COMPLETED
+      );
+
+      // Обновляем баланс пользователя
+      await this.updateUserBalance(userId, -amount);
+      
+      const newBalance = currentBalance - amount;
+      console.log(`Successfully deducted ${amount} coins. New balance: ${newBalance}`);
+      
+      return {
+        success: true,
+        newBalance
+      };
+    } catch (error) {
+      console.error('Error deducting balance for car usage:', error);
+      return {
+        success: false,
+        newBalance: 0,
+        error: 'Ошибка при списании средств'
+      };
+    }
+  }
+
+  /**
    * Генерация ключа идемпотентности для YooKassa
    */
   private generateIdempotenceKey(): string {
