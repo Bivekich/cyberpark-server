@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsNumber, IsOptional, IsUrl, Min, MaxLength } from 'class-validator';
+import { IsNotEmpty, IsString, IsNumber, IsOptional, IsUrl, IsUUID, Min, MaxLength } from 'class-validator';
 
 export class CreateCarDto {
   @IsString()
@@ -25,4 +25,8 @@ export class CreateCarDto {
   @IsNumber()
   @Min(0)
   quantity: number;
+
+  @IsOptional()
+  @IsUUID()
+  locationId?: string;
 } 

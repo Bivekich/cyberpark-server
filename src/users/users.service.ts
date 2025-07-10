@@ -16,11 +16,14 @@ export class UsersService {
   ) {}
 
   async findAll(): Promise<User[]> {
-    return this.usersRepository.find();
+    return this.usersRepository.find({ relations: ['selectedLocation'] });
   }
 
   async findOne(id: string): Promise<User> {
-    const user = await this.usersRepository.findOne({ where: { id } });
+    const user = await this.usersRepository.findOne({ 
+      where: { id },
+      relations: ['selectedLocation']
+    });
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
@@ -28,15 +31,24 @@ export class UsersService {
   }
 
   async findByEmail(email: string): Promise<User> {
-    return this.usersRepository.findOne({ where: { email } });
+    return this.usersRepository.findOne({ 
+      where: { email },
+      relations: ['selectedLocation']
+    });
   }
 
   async findByTelegramId(telegramId: string): Promise<User> {
-    return this.usersRepository.findOne({ where: { telegramId } });
+    return this.usersRepository.findOne({ 
+      where: { telegramId },
+      relations: ['selectedLocation']
+    });
   }
 
   async findByAppleId(appleId: string): Promise<User> {
-    return this.usersRepository.findOne({ where: { appleId } });
+    return this.usersRepository.findOne({ 
+      where: { appleId },
+      relations: ['selectedLocation']
+    });
   }
 
   async create(
@@ -104,6 +116,26 @@ export class UsersService {
     await this.usersRepository.update(userId, {
       refreshToken: refreshToken ? await bcrypt.hash(refreshToken, 10) : null,
     });
+  }
+
+  /**
+   * Update user's selected location
+   */
+  async updateSelectedLocation(userId: string, locationId: string | null): Promise<User> {
+    console.log(`Updating selected location for user ${userId} to location: ${locationId}`);
+    
+    // Check that user exists
+    const user = await this.findOne(userId);
+    console.log(`User found: ${user.email}, current selectedLocationId: ${user.selectedLocationId}`);
+    
+    // Update the location
+    await this.usersRepository.update(userId, { selectedLocationId: locationId });
+    
+    // Return updated user with relation
+    const updatedUser = await this.findOne(userId);
+    console.log(`After update, selectedLocationId: ${updatedUser.selectedLocationId}`);
+    
+    return updatedUser;
   }
 
   /**

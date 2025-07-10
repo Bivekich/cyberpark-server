@@ -20,7 +20,7 @@ export class CarUnitsController {
   @Patch(':unitId')
   updateUnit(
     @Param('unitId') unitId: string,
-    @Body() body: { status?: CarStatus; battery?: number; currentUserId?: string | null; name?: string },
+    @Body() body: { status?: CarStatus; battery?: number; currentUserId?: string | null; name?: string; locationId?: string | null },
   ) {
     // Prevent admin from setting RESERVED status (only system can do this)
     if (body.status === CarStatus.RESERVED) {
@@ -32,9 +32,9 @@ export class CarUnitsController {
   @Post('car/:carId')
   createUnits(
     @Param('carId') carId: string,
-    @Body() body: { quantity: number },
+    @Body() body: { quantity: number; locationId?: string },
   ) {
-    return this.carUnitsService.createUnits(carId, body.quantity);
+    return this.carUnitsService.createUnits(carId, body.quantity, body.locationId);
   }
 
   @Delete(':unitId')

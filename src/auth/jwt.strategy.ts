@@ -23,7 +23,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       id: user.id, 
       email: user.email, 
       fullName: user.fullName,
-      profileImage: user.profileImage 
+      profileImage: user.profileImage,
+      selectedLocation: user.selectedLocation,
+      selectedLocationId: user.selectedLocationId
     };
     // console.log(`JWT strategy returning user data:`, userResponse);
     

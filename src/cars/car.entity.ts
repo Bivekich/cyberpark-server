@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Location } from '../locations/location.entity';
 
 export enum CarStatus {
   AVAILABLE = 'available',
@@ -32,6 +33,13 @@ export class Car {
 
   @Column({ type: 'int', default: 1 })
   quantity: number;
+
+  @ManyToOne(() => Location, (location) => location.id, { nullable: true })
+  @JoinColumn({ name: 'location_id' })
+  location: Location;
+
+  @Column({ name: 'location_id', nullable: true })
+  locationId: string | null;
 
   @CreateDateColumn()
   createdAt: Date;

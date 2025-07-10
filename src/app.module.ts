@@ -8,6 +8,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { ReservationsModule } from './reservations/reservations.module';
 import { CarsModule } from './cars/cars.module';
 import { CarUnitsModule } from './cars/car-units.module';
+import { LocationsModule } from './locations/locations.module';
 import { config } from 'dotenv';
 
 // Load Environment Variables
@@ -30,6 +31,7 @@ config({
     ReservationsModule,
     CarsModule,
     CarUnitsModule,
+    LocationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

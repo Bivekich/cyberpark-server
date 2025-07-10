@@ -1,4 +1,4 @@
-import { Controller, Get, Param, UseGuards, Post, Body, Request } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards, Post, Body, Request, Patch } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User } from './user.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -18,6 +18,30 @@ export class UsersController {
   @Get(':id')
   findOne(@Param('id') id: string): Promise<User> {
     return this.usersService.findOne(id);
+  }
+
+  /**
+   * Update user's selected location
+   */
+  @Patch('location')
+  @UseGuards(JwtAuthGuard)
+  async updateLocation(
+    @Request() req,
+    @Body('locationId') locationId: string | null,
+  ) {
+    console.log(`updateLocation called for user ${req.user.id} with locationId: ${locationId}`);
+    const updatedUser = await this.usersService.updateSelectedLocation(req.user.id, locationId);
+    console.log(`Location updated successfully for user ${req.user.id}`);
+    return { 
+      success: true, 
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        fullName: updatedUser.fullName,
+        selectedLocation: updatedUser.selectedLocation,
+        selectedLocationId: updatedUser.selectedLocationId
+      }
+    };
   }
 
   /**

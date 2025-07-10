@@ -14,11 +14,17 @@ export class CarsService {
   ) {}
 
   findAll(): Promise<Car[]> {
-    return this.carsRepo.find({ order: { createdAt: 'DESC' } });
+    return this.carsRepo.find({ 
+      relations: ['location'],
+      order: { createdAt: 'DESC' } 
+    });
   }
 
   async findOne(id: string): Promise<Car> {
-    const car = await this.carsRepo.findOne({ where: { id } });
+    const car = await this.carsRepo.findOne({ 
+      where: { id },
+      relations: ['location']
+    });
     if (!car) throw new NotFoundException('Car not found');
     return car;
   }
@@ -40,7 +46,17 @@ export class CarsService {
 
   async update(id: string, dto: UpdateCarDto): Promise<Car> {
     const car = await this.findOne(id);
+
+    // Explicitly handle location change to avoid stale relation data
+    if (Object.prototype.hasOwnProperty.call(dto, 'locationId')) {
+      car.locationId = dto.locationId ?? null;
+      // Clear the relation object so TypeORM picks up the new FK value
+      car.location = null as any;
+    }
+
+    // Assign the rest of the mutable fields
     Object.assign(car, dto);
+
     return this.carsRepo.save(car);
   }
 

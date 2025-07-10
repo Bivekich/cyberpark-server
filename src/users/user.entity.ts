@@ -1,6 +1,7 @@
-import { Entity, Column, PrimaryGeneratedColumn, BeforeInsert, OneToMany } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, BeforeInsert, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Transaction } from './entities/transaction.entity';
+import { Location } from '../locations/location.entity';
 
 @Entity('users')
 export class User {
@@ -33,6 +34,14 @@ export class User {
 
   @Column({ name: 'profile_image', nullable: true })
   profileImage: string;
+
+  // Add selected location relationship
+  @ManyToOne(() => Location, { nullable: true })
+  @JoinColumn({ name: 'selected_location_id' })
+  selectedLocation: Location | null;
+
+  @Column({ name: 'selected_location_id', nullable: true })
+  selectedLocationId: string | null;
 
   @OneToMany(() => Transaction, transaction => transaction.user)
   transactions: Transaction[];

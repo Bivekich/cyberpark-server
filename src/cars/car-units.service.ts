@@ -14,7 +14,11 @@ export class CarUnitsService {
   ) {}
 
   findByCar(carId: string) {
-    return this.unitsRepo.find({ where: { carId } });
+    return this.unitsRepo.find({ 
+      where: { carId }, 
+      relations: ['location'],
+      order: { createdAt: 'ASC' }
+    });
   }
 
   async findOne(unitId: string) {
@@ -23,17 +27,18 @@ export class CarUnitsService {
     return unit;
   }
 
-  async update(unitId: string, data: { status?: CarStatus; battery?: number; currentUserId?: string | null; name?: string }) {
+  async update(unitId: string, data: { status?: CarStatus; battery?: number; currentUserId?: string | null; name?: string; locationId?: string | null }) {
     const unit = await this.unitsRepo.findOne({ where: { id: unitId } });
     if (!unit) throw new NotFoundException('Unit not found');
     if (data.status) unit.status = data.status;
     if (typeof data.battery === 'number') unit.battery = data.battery;
     if ('currentUserId' in data) unit.currentUserId = data.currentUserId;
     if (data.name !== undefined) unit.name = data.name;
+    if ('locationId' in data) unit.locationId = data.locationId;
     return this.unitsRepo.save(unit);
   }
 
-  async createUnits(carId: string, quantity: number) {
+  async createUnits(carId: string, quantity: number, locationId?: string) {
     // Get the car to use its name for auto-naming units
     const parentCar = await this.carsRepo.findOne({ where: { id: carId } });
     const carName = parentCar?.name || 'Car';
@@ -43,6 +48,7 @@ export class CarUnitsService {
     
     const units: Partial<CarUnit>[] = Array.from({ length: quantity }).map((_, index) => ({
       carId,
+      locationId: locationId || null,
       name: `${carName} #${existingCount + index + 1}`,
       status: CarStatus.AVAILABLE,
       battery: 100,
