@@ -6,12 +6,15 @@ import {
   Param,
   Patch,
   Delete,
+  UseGuards,
+  Request,
 } from '@nestjs/common';
 import { CarsService } from './cars.service';
 import { CreateCarDto } from './dto/create-car.dto';
 import { UpdateCarDto } from './dto/update-car.dto';
 import { S3Service } from '../aws/s3.service';
 import { RequestUploadDto } from './dto/request-upload.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('cars')
 export class CarsController {
@@ -23,6 +26,13 @@ export class CarsController {
   @Get()
   findAll() {
     return this.carsService.findAll();
+  }
+
+  @Get('available-for-user')
+  @UseGuards(JwtAuthGuard)
+  findAvailableForUser(@Request() req) {
+    const userLevel = req.user.level || 1;
+    return this.carsService.findAvailableForLevel(userLevel);
   }
 
   @Post()

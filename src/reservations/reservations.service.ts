@@ -4,7 +4,8 @@ import { Repository } from 'typeorm';
 import { Reservation, ReservationStatus } from './reservation.entity';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { CarUnit } from '../cars/car-unit.entity';
-import { CarStatus } from '../cars/car.entity';
+import { Car, CarStatus } from '../cars/car.entity';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class ReservationsService {
@@ -13,6 +14,9 @@ export class ReservationsService {
     private reservationsRepository: Repository<Reservation>,
     @InjectRepository(CarUnit)
     private carUnitsRepository: Repository<CarUnit>,
+    @InjectRepository(Car)
+    private carsRepository: Repository<Car>,
+    private usersService: UsersService,
   ) {}
 
   private buildExpiration(startTime: Date): Date {
@@ -25,6 +29,20 @@ export class ReservationsService {
     const active = await this.findActiveByUser(userId);
     if (active) {
       throw new BadRequestException('User already has an active reservation');
+    }
+
+    // Check user level against car minimum level requirement
+    const car = await this.carsRepository.findOne({ where: { id: dto.carId } });
+    if (!car) {
+      throw new BadRequestException('Car not found');
+    }
+
+    const user = await this.usersService.findOne(userId);
+    const userLevel = user.level || 1;
+    const requiredLevel = car.minLevel || 1;
+
+    if (userLevel < requiredLevel) {
+      throw new BadRequestException(`Your level (${userLevel}) is too low. This car requires level ${requiredLevel} or higher.`);
     }
 
     // Find an available car unit for the requested car type

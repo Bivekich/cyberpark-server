@@ -27,6 +27,11 @@ export class CreateCarDto {
   quantity: number;
 
   @IsOptional()
+  @IsNumber()
+  @Min(1)
+  minLevel?: number;
+
+  @IsOptional()
   @IsUUID()
   locationId?: string;
 } 

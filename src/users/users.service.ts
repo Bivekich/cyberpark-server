@@ -155,4 +155,66 @@ export class UsersService {
     const updatedUser = await this.findOne(userId);
     console.log(`After update, profileImage: ${updatedUser.profileImage}`);
   }
+
+  /**
+   * Update user's total spent amount and level
+   */
+  async updateTotalSpentAndLevel(userId: string, spentAmount: number): Promise<{ newLevel: number; leveledUp: boolean }> {
+    console.log(`Updating total spent for user ${userId} by ${spentAmount} coins`);
+    
+    const user = await this.findOne(userId);
+    const currentTotalSpent = parseFloat(user.totalSpent.toString()) || 0;
+    const currentLevel = user.level || 1;
+    
+    const newTotalSpent = currentTotalSpent + spentAmount;
+    const newLevel = this.calculateLevel(newTotalSpent);
+    const leveledUp = newLevel > currentLevel;
+    
+    console.log(`User ${userId}: spent ${spentAmount}, total: ${currentTotalSpent} -> ${newTotalSpent}, level: ${currentLevel} -> ${newLevel}`);
+    
+    await this.usersRepository.update(userId, {
+      totalSpent: newTotalSpent,
+      level: newLevel
+    });
+    
+    if (leveledUp) {
+      console.log(`🎉 User ${userId} leveled up from ${currentLevel} to ${newLevel}!`);
+    }
+    
+    return { newLevel, leveledUp };
+  }
+
+  /**
+   * Calculate user level based on total spent (150 coins per level)
+   */
+  private calculateLevel(totalSpent: number): number {
+    const coinsPerLevel = 150;
+    return Math.floor(totalSpent / coinsPerLevel) + 1;
+  }
+
+  /**
+   * Get user level information
+   */
+  async getUserLevelInfo(userId: string): Promise<{
+    level: number;
+    totalSpent: number;
+    coinsToNextLevel: number;
+    progressToNextLevel: number;
+  }> {
+    const user = await this.findOne(userId);
+    const totalSpent = parseFloat(user.totalSpent.toString()) || 0;
+    const level = user.level || 1;
+    const coinsPerLevel = 150;
+    
+    const coinsSpentInCurrentLevel = totalSpent % coinsPerLevel;
+    const coinsToNextLevel = coinsPerLevel - coinsSpentInCurrentLevel;
+    const progressToNextLevel = (coinsSpentInCurrentLevel / coinsPerLevel) * 100;
+    
+    return {
+      level,
+      totalSpent,
+      coinsToNextLevel,
+      progressToNextLevel: Math.round(progressToNextLevel * 100) / 100 // Round to 2 decimal places
+    };
+  }
 }

@@ -20,6 +20,17 @@ export class CarsService {
     });
   }
 
+  /**
+   * Find cars available for a specific user level
+   */
+  async findAvailableForLevel(userLevel: number): Promise<Car[]> {
+    return this.carsRepo.createQueryBuilder('car')
+      .leftJoinAndSelect('car.location', 'location')
+      .where('car.minLevel <= :userLevel', { userLevel: userLevel >= 1 ? userLevel : 1 })
+      .orderBy('car.createdAt', 'DESC')
+      .getMany();
+  }
+
   async findOne(id: string): Promise<Car> {
     const car = await this.carsRepo.findOne({ 
       where: { id },

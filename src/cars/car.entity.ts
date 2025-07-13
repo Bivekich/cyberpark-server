@@ -34,6 +34,9 @@ export class Car {
   @Column({ type: 'int', default: 1 })
   quantity: number;
 
+  @Column({ name: 'min_level', type: 'int', default: 1 })
+  minLevel: number;
+
   @ManyToOne(() => Location, (location) => location.id, { nullable: true })
   @JoinColumn({ name: 'location_id' })
   location: Location;

@@ -14,6 +14,15 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
+  // Specific routes first to avoid conflict with dynamic ":id"
+  @Get('level')
+  @UseGuards(JwtAuthGuard)
+  async getUserLevel(@Request() req) {
+    const levelInfo = await this.usersService.getUserLevelInfo(req.user.id);
+    return levelInfo;
+  }
+
+  // Dynamic route for user by ID must be declared after more specific routes
   @UseGuards(JwtAuthGuard)
   @Get(':id')
   findOne(@Param('id') id: string): Promise<User> {

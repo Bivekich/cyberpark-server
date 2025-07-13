@@ -32,6 +32,12 @@ export class User {
   @Column({ name: 'balance', type: 'decimal', precision: 10, scale: 2, default: 0 })
   balance: number;
 
+  @Column({ name: 'level', type: 'int', default: 1 })
+  level: number;
+
+  @Column({ name: 'total_spent', type: 'decimal', precision: 10, scale: 2, default: 0 })
+  totalSpent: number;
+
   @Column({ name: 'profile_image', nullable: true })
   profileImage: string;
 

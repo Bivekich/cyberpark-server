@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { YooCheckout, ICreatePayment, ICreateRefund } from '@a2seven/yoo-checkout';
 import { User } from '../users/user.entity';
 import { Transaction, TransactionType, TransactionStatus } from '../users/entities/transaction.entity';
+import { UsersService } from '../users/users.service';
 
 export interface CreatePaymentDto {
   amount: {
@@ -56,6 +57,7 @@ export class PaymentsService {
     private userRepository: Repository<User>,
     @InjectRepository(Transaction)
     private transactionRepository: Repository<Transaction>,
+    private usersService: UsersService,
   ) {
     // Инициализация YooCheckout клиента
     const shopId = process.env.YOOKASSA_SHOP_ID;
@@ -532,7 +534,7 @@ export class PaymentsService {
   /**
    * Списание средств за использование машины
    */
-  async deductBalanceForCarUsage(userId: string, amount: number, carName: string, duration: number): Promise<{ success: boolean; newBalance: number; error?: string }> {
+  async deductBalanceForCarUsage(userId: string, amount: number, carName: string, duration: number): Promise<{ success: boolean; newBalance: number; levelInfo?: { newLevel: number; leveledUp: boolean }; error?: string }> {
     try {
       console.log(`Deducting ${amount} coins from user ${userId} for car usage`);
       
@@ -561,12 +563,16 @@ export class PaymentsService {
       // Обновляем баланс пользователя
       await this.updateUserBalance(userId, -amount);
       
+      // Обновляем уровень пользователя на основе потраченных средств
+      const levelInfo = await this.usersService.updateTotalSpentAndLevel(userId, amount);
+      
       const newBalance = currentBalance - amount;
       console.log(`Successfully deducted ${amount} coins. New balance: ${newBalance}`);
       
       return {
         success: true,
-        newBalance
+        newBalance,
+        levelInfo
       };
     } catch (error) {
       console.error('Error deducting balance for car usage:', error);
